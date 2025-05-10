@@ -1,0 +1,190 @@
+---
+title: "Taxa de suicídio"
+format: html
+editor: visual
+---
+
+```{r}
+#| label: load-packages # nomes únicos
+#| include: false # não inclui o resultado no doc
+
+library(tidyverse) # pacote ggplot2 (gráficos)
+library(WDI) # pacote dos dados
+library(scales)
+
+# BASES DE DADOS
+# COLOCAR OS TRÊS OBJETOS DE DADOS
+
+# EXEMPLO DA AULA 6
+# DADOS EM PAINEL
+dadospib <- WDI(country = 'all',
+                indicator = 'NY.GDP.MKTP.CD')
+# CORTE TRANSVERSAL
+dadospib2023 <- WDI(country = 'all',
+                    indicator = 'NY.GDP.MKTP.CD',
+                    start = 2023, end = 2023)
+# SÉRIE TEMPORAL
+dadospibbr <- WDI(country = 'BR',
+                  indicator = 'NY.GDP.MKTP.CD')
+```
+
+## Taxa de Suicidio
+
+A analise apresenta o indicador da Taxa de suicidio masculino, revelando dispariedades globais influenciadas por diversos fatores, cultural, socioeconômicos e politicas públicas.
+
+## GRÁFICO COM DADOS EM PAINEL
+
+O gráfico apresenta a evolução da taxa de suicídio masculino (por 100 mil homens) em cinco países (Brasil, Índia, Japão, Rússia e EUA) entre 2000 e 2022, usando o indicador SH.STA.SUIC.MA.P5 do Banco Mundial.
+
+Destaques por País:
+Rússia: Taxas extremamente altas (pico próximo de 90), mas com tendência de queda após 2015.
+
+Japão: Taxas estáveis (entre 25 e 30), refletindo desafios crônicos como pressão social e isolamento.
+
+EUA e Índia: Aumento progressivo, possivelmente ligado a crises econômicas e acesso a métodos letais.
+
+Brasil: Taxas mais baixas (10), porém com crescimento lento.
+
+```{r}
+#| label: dadosempainel
+#| warning: false
+#| echo: false
+
+#library(WDI)
+#library(dplyr)
+#library(ggplot2)
+#library(scales)
+
+# Buscar os dados do Banco Mundial
+taxasuicidio_painel <- WDI(
+  country = "all",
+  indicator = "SH.STA.SUIC.MA.P5", # Taxa de suicídio masculino
+  extra = FALSE,                   # Não carregar metadados extras
+  start = 2000,                    # Ano inicial
+  end = 2022                       # Ano final
+)
+
+# Selecionar países específicos
+paises_selecionados <- c("Brazil", "United States", "Japan", "Russian Federation", "India")
+
+# Filtrar e preparar os dados
+painel_amostra <- taxasuicidio_painel %>%
+  filter(country %in% paises_selecionados,
+         !is.na(SH.STA.SUIC.MA.P5)) %>%  # Remover valores missing
+  mutate(country = case_when(             # Padronizar nomes
+    country == "Russian Federation" ~ "Russia",
+    TRUE ~ country
+  ))
+
+# Criar o gráfico de evolução
+ggplot(painel_amostra, aes(x = year, y = SH.STA.SUIC.MA.P5, color = country)) +
+  geom_line(size = 1.2, alpha = 0.8) +
+  geom_point(size = 2) +  # Adiciona pontos para melhor visualização
+  scale_x_continuous(breaks = seq(2000, 2022, by = 2)) +  # Eixo X a cada 2 anos
+  scale_y_continuous(labels = comma_format(big.mark = ".", decimal.mark = ",")) +  # Formato numérico
+  labs(
+    title = "Evolução da Taxa de Suicídio Masculino (2000-2022)",
+    subtitle = "Taxa por 100 mil habitantes homens",
+    x = "Ano",
+    y = "Taxa de suicídio",
+    color = "País",
+    caption = "Fonte: Banco Mundial (WDI)\nIndicador: SH.STA.SUIC.MA.P5"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 14),
+    plot.subtitle = element_text(hjust = 0.5, color = "gray40"),
+    plot.caption = element_text(color = "gray50", hjust = 0),
+    legend.position = "bottom",
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  scale_color_brewer(palette = "Set1")  # Paleta de cores distinta
+```
+
+## GRÁFICO COM CORTE TRANSVERSAL
+
+O gráfico analisa as taxas de suicídio masculino em 2015, revelando dados alarmantes. A Lituânia lidera com 61 casos por 100 mil homens, cinco vezes acima da média global (9 e 12). Rússia (54,5) e Guiana (51,6) completam o top 3.
+Todos os países listados apresentam taxas superiores a 37, valores considerados extremamente altos pela Organização Mundial da Saúde.
+
+```{r}
+#| label: corte-transversal
+#| warning: false
+#| echo: false
+
+# Instalar pacotes se necessário (descomente se precisar)
+# install.packages(c("WDI", "tidyverse", "scales", "dplyr", "ggplot2"))
+
+# Carregar pacotes explicitamente
+#library(WDI)
+#library(dplyr)    # Para mutate() e funções de manipulação
+#library(ggplot2)  # Para gráficos
+#library(scales)   # Para formatação de eixos
+
+# === Buscar dados ===
+dados_suicidio <- WDI(
+  country = "all",
+  indicator = "SH.STA.SUIC.MA.P5",
+  extra = TRUE
+)
+
+# === Processamento seguro ===
+top10_2015 <- dados_suicidio %>% 
+  dplyr::filter(
+    year == 2015,
+    !is.na(SH.STA.SUIC.MA.P5),
+    region != "Aggregates"
+  ) %>%
+  dplyr::slice_max(
+    order_by = SH.STA.SUIC.MA.P5,
+    n = 10
+  ) %>%
+  dplyr::mutate(
+    country = forcats::fct_reorder(country, SH.STA.SUIC.MA.P5)
+  )
+
+# === Gráfico ===
+ggplot2::ggplot(top10_2015, 
+                aes(x = country, 
+                    y = SH.STA.SUIC.MA.P5, 
+                    fill = region)) +
+  geom_col(width = 0.8) +
+  geom_text(
+    aes(label = round(SH.STA.SUIC.MA.P5, 1)),
+    hjust = -0.2, 
+    size = 3.5
+  ) +
+  coord_flip() +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title = "TOP 10 PAÍSES COM MAIOR TAXA DE SUICÍDIO MASCULINO (2015)",
+    subtitle = "Taxa por 100 mil habitantes homens",
+    caption = "Fonte: Banco Mundial (WDI)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.text.x = element_blank()
+  )
+```
+
+## GRÁFICO COM SÉRIE TEMPORAL
+
+O gráfico mostra a evolução da taxa de suicídio entre homens no Brasil, medida em casos por 100 mil habitantes. Entre 2000 e 2022, observa-se uma tendência de aumento gradual, embora os valores permaneçam abaixo da média global (9 a 12 casos por 100 mil).
+
+```{r}
+#| label: serie-temporal
+#| warning: false
+#| echo: false
+
+# === 1. SÉRIE TEMPORAL: Taxa de suicídio (homens) no Brasil de 2000 a 2022 ===
+brasil_suicidio <- WDI(country = "BR",
+                       indicator = "SH.STA.SUIC.MA.P5",
+                       start = 2000, end = 2022)
+
+ggplot(brasil_suicidio, aes(x = year, y = SH.STA.SUIC.MA.P5)) +
+  geom_line(color = "darkred", size = 1.2) +
+  labs(title = "Taxa de suicídio (homens) no Brasil (2000–2022)",
+       x = "Ano", y = "Taxa por 100 mil habitantes") +
+  theme_minimal()
+```
