@@ -1,0 +1,82 @@
+---
+title: "Saldo das operações de crédito para Pessoas Físicas em Santa Catarina"
+format: html
+editor: visual
+---
+
+O gráfico mostra uma linha temporal crescente, representando como o saldo total de crédito concedido a pessoas físicas aumentou ao longo dos anos, ele enfatiza tendências de alta ao longo do tempo
+
+Essa crescente se deu por conta da expansão do acesso ao crédito, seja por crescimento econômico, aumento da renda ou facilidade de obtenção de empréstimos.
+
+Esse tipo de análise é muito relevante por várias razões:
+
+1. Indicador da atividade econômica: o crédito é um motor de consumo e investimento. Quando pessoas tomam crédito, compram bens duráveis, imóveis, etc., estimulando a economia local.
+
+2. Monitoramento do endividamento: altos saldos de crédito podem sinalizar sobre-endividamento, levando a inadimplência e crises financeiras. Políticas públicas podem ser ajustadas com base nisso (ex.: limites de juros, programas de renegociação).
+
+3. Planejamento de políticas pública: governos e o Banco Central utilizam essas séries para:
+
+-Avaliar impacto de políticas monetárias
+
+-Definir taxa de juros
+
+-Planejar incentivos fiscais e sociais
+
+```{r}
+#| label: load-packages
+#| include: false
+
+library(GetBCBData)
+library(tidyverse)
+library(gganimate)
+library(gifski)
+
+meu.id <- c("Saldo das operações de crédito - SC - Pessoas físicas" = 14025)
+
+df.bcb <- gbcbd_get_series(id = meu.id ,
+                           first.date = '2004-01-01',
+                             last.date = Sys.Date(),
+                           format.data = 'long',
+                           use.memoise = TRUE,
+                           cache.path = tempdir(), # use tempdir para pasta de cache
+                           do.parallel = FALSE)
+
+view(df.bcb)
+
+# colocando o nome de series.name para values
+df.bcb <- df.bcb |>
+  pivot_wider(
+    names_from = series.name,
+    values_from = value
+  )
+```
+
+
+```{r}
+#| label: plot-penguins
+#| warning: false
+#| echo: false
+
+# 2. Criar o gráfico animado
+animated_plot <- ggplot(df.bcb, aes(x = ref.date, y = `Saldo das operações de crédito - SC - Pessoas físicas`
+                                    )) +
+  geom_line(color = "steelblue", linewidth = 1) +
+  labs(title = "Saldo do crédito - SC - PF (2004 - 2025)",
+       x = "", y = "Saldo (R$)") +
+  transition_reveal(ref.date) +
+  shadow_mark(past = TRUE, future = FALSE) +
+  ease_aes("linear") +
+  theme_minimal()
+
+
+animated_plot
+# 4. Salvar a animação (usando o objeto já renderizado)
+#anim_save("credito_pf_sc.gif", animation = anim)
+
+# 5. Verificar se o arquivo foi criado
+#if(file.exists("credito_pf_sc.gif")) {
+#  message("GIF salvo com sucesso em: ", normalizePath("credito_pf_sc.gif"))
+#} else {
+#  warning("O GIF não foi salvo. Verifique as permissões do diretório.")
+#}
+```
